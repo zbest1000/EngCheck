@@ -21,7 +21,8 @@ Compliance checker based on OSHA, ISO, NFPA standards for modern engineering wor
 ```bash
 git clone https://github.com/zbest1000/EngCheck.git
 cd EngCheck
-# Follow specific setup instructions in docs/
+pip install -r requirements.txt
+python -m engcheck.main
 ```
 
 ## Development
@@ -30,7 +31,14 @@ cd EngCheck
 - [ ] Phase 3: Integrations
 
 ## Tech Stack
-Modern frameworks and best practices for engineering applications.
+The service is written in **Python 3.11** using the following libraries:
+
+- **FastAPI** for the web API
+- **Uvicorn** as the ASGI server
+- **Pydantic** for data validation
+
+This minimal stack provides a clean and scalable architecture that can easily be
+expanded with additional compliance rules and integrations.
 
 ## Contributing
 1. Fork the repository
