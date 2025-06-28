@@ -1,0 +1,10 @@
+[project]
+name = "engcheck"
+version = "0.1.0"
+description = "Prototype compliance engine"
+authors = [{name = "EngCheck"}]
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.scripts]
+engcheck = "engcheck.cli:main"

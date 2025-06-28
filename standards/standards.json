@@ -1,0 +1,20 @@
+[
+  {
+    "id": "OSHA-001",
+    "description": "Personal protective equipment must be worn when servicing electrical panels.",
+    "projects": ["electrical", "automation"],
+    "keywords": ["PPE", "protective equipment", "safety goggles"]
+  },
+  {
+    "id": "NEC-100",
+    "description": "All conductors must be labeled according to NEC Article 310.",
+    "projects": ["electrical"],
+    "keywords": ["Article 310", "conductor labeling"]
+  },
+  {
+    "id": "ISO-13849-1",
+    "description": "Safety-related parts of control systems shall meet performance level d.",
+    "projects": ["automation", "mechanical"],
+    "keywords": ["performance level d", "safety-related"]
+  }
+]

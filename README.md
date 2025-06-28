@@ -3,7 +3,7 @@
 > Compliance checker based on OSHA, ISO, NFPA standards
 
 ## Overview
-Compliance checker based on OSHA, ISO, NFPA standards for modern engineering workflows.
+Prototype compliance checker that generates project specific checklists and scans engineering documents for missing requirements.
 
 ## Features
 - Professional engineering tool
@@ -21,7 +21,22 @@ Compliance checker based on OSHA, ISO, NFPA standards for modern engineering wor
 ```bash
 git clone https://github.com/zbest1000/EngCheck.git
 cd EngCheck
-# Follow specific setup instructions in docs/
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+# install in editable mode to use the ``engcheck`` command
+pip install -e .
+```
+
+### Usage
+Generate a checklist for an electrical project:
+```bash
+engcheck generate-checklist --project electrical
+```
+
+Validate a PDF document:
+```bash
+engcheck check-document --project electrical path/to/file.pdf
 ```
 
 ## Development
