@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: engcheck_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: engcheck
+      POSTGRES_USER: engcheck
+      POSTGRES_PASSWORD: engcheck_password
+      POSTGRES_MULTIPLE_DATABASES: engcheck,openwebui
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-multiple-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-postgres-dbs.sh
+    ports:
+      - "5432:5432"
+    networks:
+      - engcheck_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U engcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: engcheck_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - engcheck_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # EngCheck Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: engcheck_backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://engcheck:engcheck_password@postgres:5432/engcheck
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-engcheck-super-secret-key}
+      - DEBUG=true
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - engcheck_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # EngCheck Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: engcheck_frontend
+    restart: unless-stopped
+    environment:
+      - PUBLIC_API_URL=http://localhost:8000
+      - PUBLIC_OPENWEBUI_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - engcheck_network
+
+  # Open WebUI Integration
+  openwebui:
+    build:
+      context: ./open-webui
+      dockerfile: Dockerfile
+    container_name: engcheck_openwebui
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://engcheck:engcheck_password@postgres:5432/openwebui
+      - REDIS_URL=redis://redis:6379/1
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-openwebui-secret-key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ENABLE_WEBSOCKET_SUPPORT=true
+      - WEBSOCKET_MANAGER=redis
+      - WEBSOCKET_REDIS_URL=redis://redis:6379/1
+      - WEBUI_URL=http://localhost:8080
+      - CORS_ORIGINS=http://localhost:3000
+      - ENGCHECK_API_URL=http://backend:8000
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./open-webui:/app
+      - openwebui_data:/app/backend/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - engcheck_network
+
+  # Celery Worker for background tasks
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: engcheck_worker
+    restart: unless-stopped
+    command: celery -A app.core.celery worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://engcheck:engcheck_password@postgres:5432/engcheck
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-engcheck-super-secret-key}
+    volumes:
+      - ./backend:/app
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - engcheck_network
+
+  # Celery Beat for scheduled tasks
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: engcheck_beat
+    restart: unless-stopped
+    command: celery -A app.core.celery beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://engcheck:engcheck_password@postgres:5432/engcheck
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SECRET_KEY=${SECRET_KEY:-engcheck-super-secret-key}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - engcheck_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: engcheck_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d
+      - ./infrastructure/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+      - openwebui
+    networks:
+      - engcheck_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+  openwebui_data:
+
+networks:
+  engcheck_network:
+    driver: bridge
