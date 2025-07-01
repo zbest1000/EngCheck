@@ -188,6 +188,9 @@ npm run test
 
 # E2E tests
 npm run test:e2e
+=======
+pip install -r requirements.txt
+python -m engcheck.main
 ```
 
 ## 🚢 Deployment
@@ -223,6 +226,16 @@ See `.env.example` for all configuration options including:
 - **Dashboards**: Grafana dashboards included
 
 ## 🤝 Contributing
+=======
+## Tech Stack
+The service is written in **Python 3.11** using the following libraries:
+
+- **FastAPI** for the web API
+- **Uvicorn** as the ASGI server
+- **Pydantic** for data validation
+
+This minimal stack provides a clean and scalable architecture that can easily be
+expanded with additional compliance rules and integrations.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
